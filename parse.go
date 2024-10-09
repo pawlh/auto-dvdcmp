@@ -14,7 +14,7 @@ type Extra struct {
 }
 
 func ParseRawExtras(rawExtras []string) []Extra {
-	var extras []Extra
+	extras := make([]Extra, 0)
 	for _, rawExtra := range rawExtras {
 		isExtra, extra := parseExtra(rawExtra)
 		if !isExtra {
