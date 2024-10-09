@@ -17,32 +17,57 @@ func main() {
 	workingDirectory = strings.ReplaceAll(workingDirectory, "\\", "")
 	mkvFiles := ScanMkvFiles(workingDirectory)
 
-	alreadyUsedExtras := make(map[string]Extra)
+	assignments := processMkvFiles(mkvFiles, extras, workingDirectory)
+	renameFiles(assignments, workingDirectory)
+}
 
+func processMkvFiles(mkvFiles []MkvFile, extras []Extra, workingDirectory string) map[string]string {
+	alreadyUsedExtras := make(map[string]Extra)
 	assignments := make(map[string]string)
+
 	for _, mkvFile := range mkvFiles {
 		matches := FindMatches(extras, mkvFile.Duration)
-		if len(matches) == 0 {
-			hours := int(mkvFile.Duration.Hours())
-			minutes := int(mkvFile.Duration.Minutes()) % 60
-			seconds := int(mkvFile.Duration.Seconds()) % 60
-			fmt.Printf("%s --> No match. Duration: %d:%d:%d\n", mkvFile.Path, hours, minutes, seconds)
-		} else if len(matches) == 1 {
-			if _, ok := alreadyUsedExtras[matches[0].Title]; ok {
-				fmt.Printf("%s --> %s is already used\n", mkvFile.Path, matches[0].Title)
-				delete(assignments, alreadyUsedExtras[matches[0].Title].Title)
-			}
-			fmt.Printf("%s --> %s.mkv\n", mkvFile.Path, matches[0].Title)
-			alreadyUsedExtras[matches[0].Title] = matches[0]
-			assignments[mkvFile.Path] = filepath.Join(workingDirectory, matches[0].Title+".mkv")
-		} else {
-			fmt.Printf("%s --> Multiple matches\n", mkvFile.Path)
-			for i, match := range matches {
-				fmt.Printf("  - %d: %s\n", i, match.Title)
-			}
-		}
+		handleMatches(mkvFile, matches, alreadyUsedExtras, assignments, workingDirectory)
 	}
 
+	return assignments
+}
+
+func handleMatches(mkvFile MkvFile, matches []Extra, alreadyUsedExtras map[string]Extra, assignments map[string]string, workingDirectory string) {
+	if len(matches) == 0 {
+		printNoMatch(mkvFile)
+	} else if len(matches) == 1 {
+		handleSingleMatch(mkvFile, matches[0], alreadyUsedExtras, assignments, workingDirectory)
+	} else {
+		printMultipleMatches(mkvFile, matches)
+	}
+}
+
+func printNoMatch(mkvFile MkvFile) {
+	hours := int(mkvFile.Duration.Hours())
+	minutes := int(mkvFile.Duration.Minutes()) % 60
+	seconds := int(mkvFile.Duration.Seconds()) % 60
+	fmt.Printf("%s --> No match. Duration: %d:%d:%d\n", mkvFile.Path, hours, minutes, seconds)
+}
+
+func handleSingleMatch(mkvFile MkvFile, match Extra, alreadyUsedExtras map[string]Extra, assignments map[string]string, workingDirectory string) {
+	if _, ok := alreadyUsedExtras[match.Title]; ok {
+		fmt.Printf("%s --> %s is already used\n", mkvFile.Path, match.Title)
+		delete(assignments, alreadyUsedExtras[match.Title].Title)
+	}
+	fmt.Printf("%s --> %s.mkv\n", mkvFile.Path, match.Title)
+	alreadyUsedExtras[match.Title] = match
+	assignments[mkvFile.Path] = filepath.Join(workingDirectory, match.Title+".mkv")
+}
+
+func printMultipleMatches(mkvFile MkvFile, matches []Extra) {
+	fmt.Printf("%s --> Multiple matches\n", mkvFile.Path)
+	for i, match := range matches {
+		fmt.Printf("  - %d: %s\n", i, match.Title)
+	}
+}
+
+func renameFiles(assignments map[string]string, workingDirectory string) {
 	for oldPath, newPath := range assignments {
 		err := os.Rename(filepath.Join(workingDirectory, oldPath), newPath)
 		if err != nil {
