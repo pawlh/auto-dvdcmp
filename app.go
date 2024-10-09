@@ -14,7 +14,6 @@ func main() {
 	extras := ParseRawExtras(strings.Split(rawExtrasTest, "\n"))
 
 	workingDirectory := prompt("Enter the working directory")
-	workingDirectory = strings.ReplaceAll(workingDirectory, "\\", "")
 	mkvFiles := ScanMkvFiles(workingDirectory)
 
 	assignments := processMkvFiles(mkvFiles, extras, workingDirectory)
